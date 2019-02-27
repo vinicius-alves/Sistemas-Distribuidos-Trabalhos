@@ -4,8 +4,13 @@
 #include <chrono>
 #include <sys/types.h>
 #include <unistd.h>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
+
+mutex mtx;
+condition_variable cv;
 
 void signalHandler( int signum ) {
 
@@ -35,7 +40,9 @@ void signalHandler( int signum ) {
    
 }
 
-int main () {
+bool acordar() {return false;}
+
+int main (int argc, char *argv[]) {
   
    signal(SIGINT , signalHandler); // 2
    signal(SIGQUIT, signalHandler); // 3 
@@ -45,10 +52,23 @@ int main () {
    
    cout << "Processo " << getpid() <<endl;
 
-   while(1) {
-      cout << "Aguardando...." << endl;
-      this_thread::sleep_for(chrono::milliseconds(4000));
+   int seletorModo =  atoi(argv[1]);
+
+   if(seletorModo == 1){
+
+      cout<<"Busy Wait"<<endl;
+      while(1) { }
+
    }
+
+   else {
+
+      cout<<"Blocking Wait"<<endl;
+      unique_lock<mutex> lck(mtx);
+      cv.wait(lck,acordar);
+
+   }
+   
 
    return 0;
 }
