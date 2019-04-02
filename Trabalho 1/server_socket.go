@@ -22,7 +22,7 @@ func SocketServer(port int) {
 		log.Fatalf("Socket listen port %d failed,%s", port, err)
 		os.Exit(1)
 	}
-	log.Printf("Begin listen port: %d", port)
+	log.Printf("Ouvindo porta: %d", port)
 
 	for {
 		conn, err := listen.Accept()
@@ -65,16 +65,26 @@ func handler(conn net.Conn) {
     
     i, err_ := strconv.ParseInt(data,10, 32)
     if(err_!= nil){}
-    result := isPrime(int(i))
+    numb := int(i)
+
+    result := isPrime(numb)
 
 	w.Write([]byte(result))
 	w.Flush()
     log.Printf("Recebido: %s - Enviado: %s", data, result)
     log.Printf("\n")
 
+  
+    
+    if(int(i) == -1){
+        log.Printf("Consumidor saindo... ")
+        os.Exit(2)
+    }
+
 }
 
 func isPrime(value int) string {
+
     for i := 2; i <= int(math.Floor(float64(value) / 2)); i++ {
         if value%i == 0 {
             return "false"
@@ -98,7 +108,9 @@ func main() {
 
     // go run server_socket.go
 
-	port := 3333
+    port := 3333
+    
+    log.Printf("Consumidor iniciando ")
 
 	SocketServer(port)
 

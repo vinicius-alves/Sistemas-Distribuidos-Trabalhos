@@ -28,6 +28,10 @@ func SocketClient(ip string, port int, N int) {
         delta   := rand.Intn(max - min) + min  
         number = number + delta
 
+        if(i==N-1){
+            number = -1
+        }
+
         message:=strconv.Itoa(number)
 
         addr := strings.Join([]string{ip, strconv.Itoa(port)}, ":")
@@ -60,10 +64,14 @@ func main() {
 		port = 3333
     )
 
+    log.Printf("Produtor iniciando ")
+
     N:= flag.Int("n", 100, "number of iterations")
     // Parse the flags.
     flag.Parse()
 
-	SocketClient(ip, port, *N)
+    SocketClient(ip, port, *N)
+    
+    log.Printf("Produtor saindo... ")
 
 }
