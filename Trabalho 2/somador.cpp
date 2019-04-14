@@ -4,13 +4,15 @@
 #include <thread> 
 #include <cmath>
 #include <chrono>
+#include <atomic> 
 
 #define VALOR_MAXIMO  100
 #define VALOR_MINIMO -100
-#define QTD_EXECUCOES 10
+#define QTD_EXECUCOES 100000
 
 using namespace std;
 typedef char BYTE;
+atomic_flag lock_stream = ATOMIC_FLAG_INIT;
 
 // g++ somador.cpp -o somador -pthread 
 
@@ -35,9 +37,13 @@ void preencher_array(){
 
 bool test_and_set(){
 
- 	bool anterior = lock;
- 	lock = true;
- 	return anterior;
+
+   //bool anterior = lock;
+ 	//lock = true;
+ 	//return anterior;
+
+ 	bool result = lock_stream.test_and_set();
+ 	return result;
 
 }
 
@@ -49,7 +55,8 @@ void acquire(){
 
 void release(){
 
-	lock = false;
+	//lock = false;
+   lock_stream.clear();
 
 }
 
