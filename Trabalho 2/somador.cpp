@@ -8,13 +8,13 @@
 
 #define VALOR_MAXIMO  100
 #define VALOR_MINIMO -100
-#define QTD_EXECUCOES 100000
+#define QTD_EXECUCOES 10
 
 using namespace std;
 typedef char BYTE;
 atomic_flag lock_stream = ATOMIC_FLAG_INIT;
 
-// g++ somador.cpp -o somador -pthread 
+// g++ somador.cpp -o somador -pthread -O3
 
 vector<thread> threads;
 uint k;
@@ -85,23 +85,25 @@ void job_thread (int id){
 
 int computar_soma(){
 
-   lock = false; 
    resultado_soma = 0;
 
-   auto start = chrono::steady_clock::now();
-
    preencher_array();
+
+   cout<<"Iteração iniciada"<<endl;
+
+   auto start = chrono::steady_clock::now();
 
    threads.clear();
 
    for (int i =0; i<k;i++) 
-      threads.push_back(thread(job_thread,i));
-  
+      threads.push_back(thread (job_thread,i));
 
-   for (auto& th : threads) 
+   for (auto& th : threads)
       th.join();
 
    auto end = chrono::steady_clock::now();
+
+   cout<<"Iteração terminada"<<endl;
 
    auto diff = end - start;
 
