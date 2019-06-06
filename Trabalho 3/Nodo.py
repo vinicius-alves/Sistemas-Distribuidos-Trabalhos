@@ -20,16 +20,15 @@ f.close()
 
 #Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência.
 def escutando_mensagem():
-    print("iniciando...\n")
+    print("escutando...\n")
     while True:
         global DEVO_MORRER
         if DEVO_MORRER == True :
             break
-        #buffer size is 1024 bytes. "data" is the message received, "addr" is the port of the sending process.
-        print("escutando...\n")
+        #buffer size is 1024 bytes. "data" is the message received, "addr" is the port of the sending process.        
         data, addr = s.recvfrom(1024)
-        print ("Mensagem recebida: " + str(data) + "de "+ str(addr) + "\n")     
-
+        print ("\nMensagem recebida: " + str(data) + "de "+ str(addr) + "\n")     
+        print("O que devo fazer?\n")
 def enviando_mensagem():    
     while True:
         global DEVO_MORRER
