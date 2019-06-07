@@ -80,13 +80,14 @@ def enviando_mensagem():
             DEVO_MORRER = True
 
         #opens the ports file with the "r" option, read_only.
-        ports = open("port_list.txt", "r")
-
+        f = open("port_list.txt", "r")
+        ports = list(f)
         #iterates over every line in the file. For python each line works as an element in an array.
-        for node_port in ports:            
-            s.sendto(message.encode("utf-8"), ("127.0.0.1", int(node_port))) 
-            print("Mensagem enviada para " + node_port)        
-         
+        for node_port in ports:
+            s.sendto(message.encode("utf-8"), ("127.0.0.1", int(node_port)))
+            print("Mensagem enviada para " + str(node_port))
+        f.close()
+
 def sair_da_lista():
     print("Programa fechando")
     global MY_PORT
@@ -100,7 +101,7 @@ def sair_da_lista():
     #Usa a variável ports_list pra escrever o arquivo apenas com as portas dos outros nodos.
     f = open("port_list.txt", "w")    
     for node in ports_list:
-        print("checking port ", node)
+        print("removing port ", node)
         if node != str(MY_PORT):
             f.write(str(node))
     f.close()
