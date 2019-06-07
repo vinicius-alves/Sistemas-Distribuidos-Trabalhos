@@ -19,7 +19,7 @@ s.bind(("127.0.0.1", 0))
 MY_PORT = s.getsockname()[1]
 print("Estou na porta " + str(MY_PORT))
 f = open("port_list.txt", "a")
-f.write(str(MY_PORT))
+f.write(str(MY_PORT) + "\n")
 f.close()
 
 #Função que procura pelo rei, enviando mensagens para todas as portas da lista.
@@ -102,7 +102,7 @@ def sair_da_lista():
     f = open("port_list.txt", "w")    
     for node in ports_list:
         print("removing port ", node)
-        if node != str(MY_PORT):
+        if node != str(MY_PORT) + "\n":
             f.write(str(node))
     f.close()
 
