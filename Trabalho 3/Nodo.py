@@ -6,7 +6,7 @@ from asyncio import Semaphore
                         #########SETUP INICIAL###########
 # É setada em True para avisar todas as threads que devem iniciar harakiri.
 DEVO_MORRER = False
-
+FINGINDO_MORTO = False
 # Identificação do rei
 KING_ID = -1
 KING_CHECKED = False
@@ -16,7 +16,16 @@ KING_SEMAPHORE = Semaphore(0)
 MSG_VIVO = 'VIVO'
 MSG_VIVO_OK = 'VIVO_OK'
 MSG_CLOSE = 'CLOSE'
+#Armazenamento do número de mensagens enviadas e recebidas de  cada tipo.
+QTD_ENV_VIVO = 0
+QTD_ENV_VIVO_OK = 0
+QTD_ENV_ELEICAO = 0
+QTD_ENV_LIDER = 0
 
+QTD_REC_VIVO = 0
+QTD_REC_VIVO_OK = 0
+QTD_REC_ELEICAO = 0
+QTD_REC_LIDER = 0
 
 # Cria o socket, AF_INET é IPv4.
 # sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -78,7 +87,7 @@ def thread_escuta_mensangens():
 
     while not(DEVO_MORRER):
         
-        #buffer size is 1024 bytes. "data" is the message received, "addr" is the address of the sending process.       
+        #buffer size is 1024 bytes. "data" is the message received, "addr" is the address of the sending process, which is a tuple (ip, port).
         try: 
             data, addr = s.recvfrom(1024)
             addr_port = addr[1]
@@ -87,7 +96,8 @@ def thread_escuta_mensangens():
             print ("Mensagem recebida: " + message + " de "+ str(addr) + "\n")
 
             if(message == MSG_VIVO ):
-                enviar_mensagem(MSG_VIVO_OK, node_port = addr_port)
+                if (not FINGINDO_MORTO):
+                    enviar_mensagem(MSG_VIVO_OK, node_port = addr_port)
 
             elif(message == MSG_VIVO_OK and addr_port == KING_ID and WAITING_KING):
                 KING_CHECKED = True
@@ -120,9 +130,9 @@ def thread_interface():
         if (message == "rei"):
             print("O atual rei é: " + str(KING_ID) + "\n")
         if (message == "falhar"):
-            pass
+            FINGINDO_MORTO = True;
         if (message == "recuperar"):
-            pass
+            FINGINDO_MORTO = False;
         if (message == "dados"):
             pass
         time.sleep(0.2)
