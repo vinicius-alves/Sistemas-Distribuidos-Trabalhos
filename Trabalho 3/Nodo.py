@@ -27,6 +27,8 @@ QTD_REC_VIVO_OK = 0
 QTD_REC_ELEICAO = 0
 QTD_REC_LIDER = 0
 
+RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_LIDER}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_LIDER}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\n"
+
 # Cria o socket, AF_INET é IPv4.
 # sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -114,7 +116,7 @@ def thread_interface():
 
     global DEVO_MORRER
     global MSG_CLOSE
-
+    global RELATORIO
     while not(DEVO_MORRER):
 
         message = input("O que devo fazer? ")
@@ -134,7 +136,7 @@ def thread_interface():
         if (message == "recuperar"):
             FINGINDO_MORTO = False;
         if (message == "dados"):
-            pass
+            print(RELATORIO)
         time.sleep(0.2)
 
 
