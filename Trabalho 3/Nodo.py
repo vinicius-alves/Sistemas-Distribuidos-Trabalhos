@@ -3,6 +3,7 @@ import time
 import threading
 from asyncio import Semaphore
 
+                        #########SETUP INICIAL###########
 # É setada em True para avisar todas as threads que devem iniciar harakiri.
 DEVO_MORRER = False
 
@@ -11,7 +12,7 @@ KING_ID = -1
 KING_CHECKED = False
 WAITING_KING = False
 KING_SEMAPHORE = Semaphore(0)
-
+#Definição das mensagens que serão recebidas pela thread que escuta mensagens.
 MSG_VIVO = 'VIVO'
 MSG_VIVO_OK = 'VIVO_OK'
 MSG_CLOSE = 'CLOSE'
@@ -109,7 +110,21 @@ def thread_interface():
         message = input("O que devo fazer? ")
         message = message.replace(' ','')
 
-        enviar_mensagem(message, broadcast = True)
+        if (message == "close"):
+            DEVO_MORRER = True;
+            sair_da_lista();
+        #Aqui, como substituo o comando que chega pelo input pela mensagem que vai ser realmente broadcastada, guardada numa variável global, fico livre pra troca essa mensagem pela que eu quiser, se no futuro eu perceber que é necessário que todas mensagens broadcastadas tenham o mesmo tamanho.
+        if (message == "terminar"): 
+            message = message.replace("terminar", MSG_CLOSE);
+            enviar_mensagem(message, broadcast = True);
+        if (message == "rei"):
+            print("O atual rei é: " + str(KING_ID) + "\n")
+        if (message == "falhar"):
+            pass
+        if (message == "recuperar"):
+            pass
+        if (message == "dados"):
+            pass
         time.sleep(0.2)
 
 
@@ -120,7 +135,7 @@ def get_king():
         print("O atual rei é: " + str(KING_ID) + "\n")
         print("Longa vida ao rei!\n")
     else:
-        print("Nosso rei foi decapitado, voltao daqui a pouco.\n")
+        print("Nosso rei foi decapitado, estamos escolhendo outro.\n")
         print("Não fui eu que decapitei ok?\n")
 
 def enviar_mensagem(message, node_port=-1, broadcast = False): 
