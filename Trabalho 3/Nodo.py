@@ -12,10 +12,8 @@ KING_CHECKED = False
 WAITING_KING = False
 KING_SEMAPHORE = Semaphore(0)
 
-
 MSG_VIVO = 'VIVO'
 MSG_VIVO_OK = 'VIVO_OK'
-
 MSG_CLOSE = 'CLOSE'
 
 
@@ -26,14 +24,28 @@ s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # O "0"  no luga da porta faz com que o OS escolha uma porta livre por conta própria.
 s.bind(("127.0.0.1", 0))
 
-#Retorna uma tupla IP, porta.
+#Retorna uma tupla IP, porta, o índice pega só a porta.
 MY_PORT = s.getsockname()[1]
 print("Estou na porta " + str(MY_PORT))
 f = open("port_list.txt", "a")
 f.write(str(MY_PORT) + "\n")
+f.close()        
+
+#Após escrever no arquivo, abre e lê para verificar se a primeira linha escrita é sua própria porta.
+f = open("port_list.txt", "r")
+ports_list = list(f)
+# Primeiro rei é o primeiro a escrever
+KING_ID = int(ports_list[0])
+print("The king is", KING_ID)
+
+print(f.read())
 f.close()
 
-# Função que verifica o rei
+#Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência.
+
+#################################################################
+
+# Definição das funções que serão rodadas nas threads.
 def thread_que_verifica_king():
 
     global KING_ID
@@ -55,23 +67,6 @@ def thread_que_verifica_king():
             break
             #KING_SEMAPHORE.acquire()
 
-        
-
-#Após escrever no arquivo, abre e lê para verificar se a primeira linha escrita é sua própria porta.
-f = open("port_list.txt", "r")
-ports_list = list(f)
-# Primeiro rei é o primeiro a escrever
-KING_ID = int(ports_list[0])
-print("The king is", KING_ID)
-
-print(f.read())
-f.close()
-
-#Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência.
-
-#################################################################
-
-# Definição das funções que serão rodadas nas threads.
 def thread_escuta_mensangens():
     print("escutando...\n")
 
@@ -118,6 +113,15 @@ def thread_interface():
         time.sleep(0.2)
 
 
+#Definição das funções que serão chamadas dentro do programa
+    #Funções que serão chamadas pela interface.
+def get_king():
+    if (not WAITING_KING):
+        print("O atual rei é: " + str(KING_ID) + "\n")
+        print("Longa vida ao rei!\n")
+    else:
+        print("Nosso rei foi decapitado, voltao daqui a pouco.\n")
+        print("Não fui eu que decapitei ok?\n")
 
 def enviar_mensagem(message, node_port=-1, broadcast = False): 
 
