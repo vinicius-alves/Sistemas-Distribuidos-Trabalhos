@@ -4,30 +4,6 @@ import threading
 from asyncio import Semaphore
 
                         #########SETUP INICIAL###########
-# É setada em True para avisar todas as threads que devem iniciar harakiri.
-DEVO_MORRER = False
-FINGINDO_MORTO = False
-# Identificação do rei
-KING_ID = -1
-KING_CHECKED = False
-WAITING_KING = False
-KING_SEMAPHORE = Semaphore(0)
-#Definição das mensagens que serão recebidas pela thread que escuta mensagens.
-MSG_VIVO = 'VIVO'
-MSG_VIVO_OK = 'VIVO_OK'
-MSG_CLOSE = 'CLOSE'
-#Armazenamento do número de mensagens enviadas e recebidas de  cada tipo.
-QTD_ENV_VIVO = 0
-QTD_ENV_VIVO_OK = 0
-QTD_ENV_ELEICAO = 0
-QTD_ENV_LIDER = 0
-
-QTD_REC_VIVO = 0
-QTD_REC_VIVO_OK = 0
-QTD_REC_ELEICAO = 0
-QTD_REC_LIDER = 0
-
-RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_LIDER}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_LIDER}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\n"
 
 # Cria o socket, AF_INET é IPv4.
 # sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -46,12 +22,43 @@ f.close()
 #Após escrever no arquivo, abre e lê para verificar se a primeira linha escrita é sua própria porta.
 f = open("port_list.txt", "r")
 ports_list = list(f)
-# Primeiro rei é o primeiro a escrever
+print("Presentes portas são: " + f.read())
+f.close()
+
+# É setada em True para avisar todas as threads que devem iniciar harakiri.
+DEVO_MORRER = False
+FINGINDO_MORTO = False
+
+# Identificação do rei
 KING_ID = int(ports_list[0])
+KING_CHECKED = False
+WAITING_KING = False
+KING_SEMAPHORE = Semaphore(0)
 print("The king is", KING_ID)
 
-print(f.read())
-f.close()
+#Definição das mensagens que serão recebidas pela thread que escuta mensagens.
+MSG_VIVO = 'VIVO'
+MSG_VIVO_OK = 'VIVO_OK'
+MSG_CLOSE = 'CLOSE'
+MSG_ELEICAO = "ELEICAO"
+MSG_OK = "OK"
+MSG_LIDER = str(s.getsockname()[1])
+
+#Armazenamento do número de mensagens enviadas e recebidas de  cada tipo.
+QTD_ENV_VIVO = 0
+QTD_ENV_VIVO_OK = 0
+QTD_ENV_ELEICAO = 0
+QTD_ENV_LIDER = 0
+QTD_ENV_OK = 0
+
+QTD_REC_VIVO = 0
+QTD_REC_VIVO_OK = 0
+QTD_REC_ELEICAO = 0
+QTD_REC_LIDER = 0
+QTD_REC_OK = 0
+
+#Relatório é impresso no terminal quando usuário emite o comando dados
+RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_LIDER}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_LIDER}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\n"
 
 #Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência.
 
@@ -64,12 +71,13 @@ def thread_que_verifica_king():
     global KING_CHECKED
     global MSG_VIVO
     global WAITING_KING
-    
+    global QTD_ENV_VIVO
     while not(DEVO_MORRER):
 
         KING_CHECKED = False
         WAITING_KING = True
         print("Tentando verificar o rei\n")
+        QTD_ENV_VIVO += 1
         enviar_mensagem(MSG_VIVO, node_port = KING_ID)
 
         time.sleep(8)
@@ -78,17 +86,31 @@ def thread_que_verifica_king():
             print("The king is dead!!\nAnarchy! ")
             break
             #KING_SEMAPHORE.acquire()
+    print("Thread de verificação do rei saindo")
 
 def thread_escuta_mensangens():
-    print("escutando...\n")
-
+    print("\nescutando...\n")
+    global FINGINDO_MORTO
     global DEVO_MORRER
     global WAITING_KING
     global KING_CHECKED
     global KING_ID
 
-    while not(DEVO_MORRER):
-        
+    global MSG_CLOSE
+    global MSG_ELEICAO
+    global MSG_LIDER
+    global MSG_OK
+    global MSG_VIVO
+    global MSG_VIVO_OK
+
+    global QTD_REC_VIVO
+    global QTD_REC_LIDER
+    global QTD_REC_VIVO_OK
+    global QTD_REC_ELEICAO
+
+    global QTD_ENV_OK
+
+    while (not DEVO_MORRER):        
         #buffer size is 1024 bytes. "data" is the message received, "addr" is the address of the sending process, which is a tuple (ip, port).
         try: 
             data, addr = s.recvfrom(1024)
@@ -97,20 +119,33 @@ def thread_escuta_mensangens():
 
             print ("Mensagem recebida: " + message + " de "+ str(addr) + "\n")
 
-            if(message == MSG_VIVO ):
+            if(message == MSG_VIVO):
+                QTD_REC_VIVO += 1
                 if (not FINGINDO_MORTO):
                     enviar_mensagem(MSG_VIVO_OK, node_port = addr_port)
-
+            
             elif(message == MSG_VIVO_OK and addr_port == KING_ID and WAITING_KING):
+                QTD_REC_VIVO_OK += 1
                 KING_CHECKED = True
                 WAITING_KING = False
 
             elif(message == MSG_CLOSE):
                 DEVO_MORRER = True
                 sair_da_lista()
+                break
+            elif(message == MSG_ELEICAO):
+                QTD_REC_ELEICAO += 1
+                if (addr_port > MY_PORT):
+                    QTD_ENV_OK += 1
+                    enviar_mensagem(MSG_OK, node_port = addr_port)
+            elif(message == MSG_LIDER):
+                QTD_REC_LIDER += 1
+
+            elif(message == MSG_OK):
+                pass
         except:
             pass
-
+    print("Thread de escuta saindo")
 
 def thread_interface():
 
@@ -123,23 +158,24 @@ def thread_interface():
         message = message.replace(' ','')
 
         if (message == "close"):
-            DEVO_MORRER = True;
-            sair_da_lista();
+            message = message.replace("close", MSG_CLOSE)
+            enviar_mensagem(message, node_port = MY_PORT)
+            sair_da_lista()
         #Aqui, como substituo o comando que chega pelo input pela mensagem que vai ser realmente broadcastada, guardada numa variável global, fico livre pra troca essa mensagem pela que eu quiser, se no futuro eu perceber que é necessário que todas mensagens broadcastadas tenham o mesmo tamanho.
         if (message == "terminar"): 
-            message = message.replace("terminar", MSG_CLOSE);
-            enviar_mensagem(message, broadcast = True);
+            message = message.replace("terminar", MSG_CLOSE)
+            enviar_mensagem(message, broadcast = True)
         if (message == "rei"):
             print("O atual rei é: " + str(KING_ID) + "\n")
         if (message == "falhar"):
-            FINGINDO_MORTO = True;
+            FINGINDO_MORTO = True
         if (message == "recuperar"):
-            FINGINDO_MORTO = False;
+            FINGINDO_MORTO = False
         if (message == "dados"):
             print(RELATORIO)
         time.sleep(0.2)
-
-
+    print("Thread de interface saindo")
+    
 #Definição das funções que serão chamadas dentro do programa
     #Funções que serão chamadas pela interface.
 def get_king():
@@ -177,6 +213,7 @@ def enviar_mensagem(message, node_port=-1, broadcast = False):
 def sair_da_lista():
     print("Programa fechando")
     global MY_PORT
+    global DEVO_MORRER
     #guarda as linhas do arquivo na variável ports_list
     f = open("port_list.txt", "r")
 
@@ -213,6 +250,7 @@ if __name__ == "__main__":
     thread_que_verifica_king.start()
     
     #Faz com que main espere as threads finalizarem antes de fechar.
-    thread_interface.join()
+    thread_interface.join()    
+    thread_que_verifica_king.join()
 
     message = input("Saindo.. Pressione enter para continuar... ")
