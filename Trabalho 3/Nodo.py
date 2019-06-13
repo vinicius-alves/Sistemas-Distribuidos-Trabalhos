@@ -1,7 +1,6 @@
 import socket
 import time
 import threading
-from asyncio import Semaphore
 
                         #########SETUP INICIAL###########
 
@@ -33,15 +32,21 @@ FINGINDO_MORTO = False
 KING_ID = int(ports_list[0])
 KING_CHECKED = False
 WAITING_KING = False
-KING_SEMAPHORE = Semaphore(0)
+KING_SEMAPHORE = threading.BoundedSemaphore(1)
 print("The king is", KING_ID)
 
+# Eleição
+# Minha eleição está ocorrendo ou outra eleição de um nó com maior ID está ocorrendo.
+MINHA_ELEICAO = False
+OUTRA_ELEICAO_COM_MAIOR_ID = False
+
 #Definição das mensagens que serão recebidas pela thread que escuta mensagens.
-MSG_VIVO = 'VIVO'
-MSG_VIVO_OK = 'VIVO_OK'
-MSG_CLOSE = 'CLOSE'
+MSG_VIVO    = "VIVO"
+MSG_VIVO_OK = "VIVO_OK"
+MSG_CLOSE   = "CLOSE"
 MSG_ELEICAO = "ELEICAO"
-MSG_OK = "OK"
+MSG_OK      = "OK"
+MSG_COORDENADOR = "COORDENADOR"
 MSG_LIDER = str(s.getsockname()[1])
 
 #Armazenamento do número de mensagens enviadas e recebidas de  cada tipo.
@@ -72,6 +77,7 @@ def thread_que_verifica_king():
     global MSG_VIVO
     global WAITING_KING
     global QTD_ENV_VIVO
+    global ELEICAO
     while not(DEVO_MORRER):
 
         KING_CHECKED = False
@@ -84,9 +90,11 @@ def thread_que_verifica_king():
 
         if(not(KING_CHECKED)):
             print("The king is dead!!\nAnarchy! ")
+            iniciar_eleicao()
             break
-            #KING_SEMAPHORE.acquire()
+            KING_SEMAPHORE.acquire(True)
     print("Thread de verificação do rei saindo")
+
 
 def thread_escuta_mensangens():
     print("\nescutando...\n")
@@ -95,6 +103,8 @@ def thread_escuta_mensangens():
     global WAITING_KING
     global KING_CHECKED
     global KING_ID
+    global MINHA_ELEICAO
+    global OUTRA_ELEICAO_COM_MAIOR_ID
 
     global MSG_CLOSE
     global MSG_ELEICAO
@@ -107,7 +117,6 @@ def thread_escuta_mensangens():
     global QTD_REC_LIDER
     global QTD_REC_VIVO_OK
     global QTD_REC_ELEICAO
-
     global QTD_ENV_OK
 
     while (not DEVO_MORRER):        
@@ -138,11 +147,19 @@ def thread_escuta_mensangens():
                 if (addr_port > MY_PORT):
                     QTD_ENV_OK += 1
                     enviar_mensagem(MSG_OK, node_port = addr_port)
+                else:
+                    OUTRA_ELEICAO_COM_MAIOR_ID = True
+
+            elif(message == MSG_COORDENADOR):
+                OUTRA_ELEICAO_COM_MAIOR_ID = False
+                KING_ID = addr_port
+                #KING_SEMAPHORE.release()
+
             elif(message == MSG_LIDER):
                 QTD_REC_LIDER += 1
 
             elif(message == MSG_OK):
-                pass
+                MINHA_ELEICAO = False
         except:
             pass
     print("Thread de escuta saindo")
@@ -156,6 +173,7 @@ def thread_interface():
 
         message = input("O que devo fazer? ")
         message = message.replace(' ','')
+        message = message.lower()
 
         if (message == "close"):
             message = message.replace("close", MSG_CLOSE)
@@ -166,7 +184,8 @@ def thread_interface():
             message = message.replace("terminar", MSG_CLOSE)
             enviar_mensagem(message, broadcast = True)
         if (message == "rei"):
-            print("O atual rei é: " + str(KING_ID) + "\n")
+            get_king()
+            #print("O atual rei é: " + str(KING_ID) + "\n")
         if (message == "falhar"):
             FINGINDO_MORTO = True
         if (message == "recuperar"):
@@ -205,9 +224,23 @@ def enviar_mensagem(message, node_port=-1, broadcast = False):
             print ("Mensagem enviada: " + str(message) + " para "+ str(node_port) + "\n")
     except:
         if(broadcast):
-            print("Ocorreu um erro ao enviar " + message+" para o nó "+str(node_port))
-        else:
             print("Ocorreu um erro ao enviar " + message+" em broadcast")
+        else:
+            print("Ocorreu um erro ao enviar " + message+" para o nó "+str(node_port))
+
+    #Funções que serão chamadas pela thread que verifica o rei.
+
+def iniciar_eleicao():
+    if(not(OUTRA_ELEICAO_COM_MAIOR_ID)):
+        print("Iniciando eleição! ")
+        MINHA_ELEICAO = True
+        enviar_mensagem(MSG_ELEICAO, broadcast = True)
+        time.sleep(8)
+        if(MINHA_ELEICAO):
+            print("Eu venci a eleição! ")
+            enviar_mensagem(MSG_COORDENADOR, broadcast = True)
+        else:
+            print("Eu perdi a eleição <°(((><")
 
 
 def sair_da_lista():
