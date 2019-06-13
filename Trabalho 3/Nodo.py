@@ -77,7 +77,7 @@ def thread_que_verifica_king():
     global MSG_VIVO
     global WAITING_KING
     global QTD_ENV_VIVO
-    global ELEICAO
+    global MINHA_ELEICAO
     while not(DEVO_MORRER):
 
         KING_CHECKED = False
