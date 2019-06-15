@@ -77,7 +77,7 @@ def thread_que_verifica_king():
     global MSG_VIVO
     global WAITING_KING
     global QTD_ENV_VIVO
-    global ELEICAO
+    global MINHA_ELEICAO
     while not(DEVO_MORRER):
 
         KING_CHECKED = False
@@ -144,7 +144,7 @@ def thread_escuta_mensangens():
                 break
             elif(message == MSG_ELEICAO):
                 QTD_REC_ELEICAO += 1
-                if (addr_port > MY_PORT):
+                if (MY_PORT > addr_port):
                     QTD_ENV_OK += 1
                     enviar_mensagem(MSG_OK, node_port = addr_port)
                 else:
@@ -160,6 +160,7 @@ def thread_escuta_mensangens():
 
             elif(message == MSG_OK):
                 MINHA_ELEICAO = False
+                print('Desisti da eleição')
         except:
             pass
     print("Thread de escuta saindo")
@@ -179,7 +180,9 @@ def thread_interface():
             message = message.replace("close", MSG_CLOSE)
             enviar_mensagem(message, node_port = MY_PORT)
             sair_da_lista()
-        #Aqui, como substituo o comando que chega pelo input pela mensagem que vai ser realmente broadcastada, guardada numa variável global, fico livre pra troca essa mensagem pela que eu quiser, se no futuro eu perceber que é necessário que todas mensagens broadcastadas tenham o mesmo tamanho.
+        # Aqui, como substituo o comando que chega pelo input pela mensagem que vai ser realmente broadcastada, 
+        # guardada numa variável global, fico livre pra troca essa mensagem pela que eu quiser, se no futuro eu perceber que
+        # é necessário que todas mensagens broadcastadas tenham o mesmo tamanho.
         if (message == "terminar"): 
             message = message.replace("terminar", MSG_CLOSE)
             enviar_mensagem(message, broadcast = True)
@@ -216,8 +219,9 @@ def enviar_mensagem(message, node_port=-1, broadcast = False):
             #iterates over every line in the file. For python each line works as an element in an array.
             for node in ports:
                 s.sendto(message.encode("utf-8"), ("127.0.0.1", int(node)))
-                print ("Mensagem enviada: " + str(message) + " para todos os nós"+ "\n")
             f.close()
+
+            print ("Mensagem enviada: " + str(message) + " para todos os nós"+ "\n")
 
         else:
             s.sendto(message.encode("utf-8"), ("127.0.0.1", int(node_port)))
@@ -231,11 +235,14 @@ def enviar_mensagem(message, node_port=-1, broadcast = False):
     #Funções que serão chamadas pela thread que verifica o rei.
 
 def iniciar_eleicao():
+    global MINHA_ELEICAO
+    global OUTRA_ELEICAO_COM_MAIOR_ID
+
     if(not(OUTRA_ELEICAO_COM_MAIOR_ID)):
         print("Iniciando eleição! ")
         MINHA_ELEICAO = True
         enviar_mensagem(MSG_ELEICAO, broadcast = True)
-        time.sleep(8)
+        time.sleep(16)
         if(MINHA_ELEICAO):
             print("Eu venci a eleição! ")
             enviar_mensagem(MSG_COORDENADOR, broadcast = True)
