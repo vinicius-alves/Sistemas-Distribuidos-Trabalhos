@@ -74,6 +74,7 @@ def thread_que_verifica_king():
 
     global KING_ID
     global KING_CHECKED
+    global KING_SEMAPHORE
     global MSG_VIVO
     global WAITING_KING
     global QTD_ENV_VIVO
@@ -91,7 +92,6 @@ def thread_que_verifica_king():
         if(not(KING_CHECKED)):
             print("The king is dead!!\nAnarchy! ")
             iniciar_eleicao()
-            break
             KING_SEMAPHORE.acquire(True)
     print("Thread de verificação do rei saindo")
 
@@ -103,6 +103,7 @@ def thread_escuta_mensangens():
     global WAITING_KING
     global KING_CHECKED
     global KING_ID
+    global KING_SEMAPHORE
     global MINHA_ELEICAO
     global OUTRA_ELEICAO_COM_MAIOR_ID
 
@@ -153,14 +154,14 @@ def thread_escuta_mensangens():
             elif(message == MSG_COORDENADOR):
                 OUTRA_ELEICAO_COM_MAIOR_ID = False
                 KING_ID = addr_port
-                #KING_SEMAPHORE.release()
+                KING_SEMAPHORE.release()
 
             elif(message == MSG_LIDER):
                 QTD_REC_LIDER += 1
 
             elif(message == MSG_OK):
                 MINHA_ELEICAO = False
-                print('Desisti da eleição')
+
         except:
             pass
     print("Thread de escuta saindo")
@@ -248,6 +249,8 @@ def iniciar_eleicao():
             enviar_mensagem(MSG_COORDENADOR, broadcast = True)
         else:
             print("Eu perdi a eleição <°(((><")
+    else:
+        print("Outra eleição com maior ID em andamento")
 
 
 def sair_da_lista():
