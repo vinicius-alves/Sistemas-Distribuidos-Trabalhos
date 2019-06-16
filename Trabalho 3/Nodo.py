@@ -47,19 +47,18 @@ MSG_CLOSE   = "CLOSE"
 MSG_ELEICAO = "ELEICAO"
 MSG_OK      = "OK"
 MSG_COORDENADOR = "COORDENADOR"
-MSG_LIDER = str(s.getsockname()[1])
 
 #Armazenamento do número de mensagens enviadas e recebidas de  cada tipo.
 QTD_ENV_VIVO = 0
 QTD_ENV_VIVO_OK = 0
 QTD_ENV_ELEICAO = 0
-QTD_ENV_LIDER = 0
+QTD_ENV_COORDENADOR = 0
 QTD_ENV_OK = 0
 
 QTD_REC_VIVO = 0
 QTD_REC_VIVO_OK = 0
 QTD_REC_ELEICAO = 0
-QTD_REC_LIDER = 0
+QTD_REC_COORDENADOR = 0
 QTD_REC_OK = 0
 
 #Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência.
@@ -107,7 +106,7 @@ def thread_escuta_mensangens():
 
     global MSG_CLOSE
     global MSG_ELEICAO
-    global MSG_LIDER
+    global MSG_COORDENADOR
     global MSG_OK
     global MSG_VIVO
     global MSG_VIVO_OK
@@ -115,7 +114,7 @@ def thread_escuta_mensangens():
     global QTD_ENV_VIVO_OK
 
     global QTD_REC_VIVO
-    global QTD_REC_LIDER
+    global QTD_REC_COORDENADOR
     global QTD_REC_VIVO_OK
     global QTD_REC_ELEICAO
     global QTD_ENV_OK
@@ -153,12 +152,10 @@ def thread_escuta_mensangens():
                     OUTRA_ELEICAO_COM_MAIOR_ID = True
 
             elif(message == MSG_COORDENADOR):
+                QTD_REC_COORDENADOR += 1
                 OUTRA_ELEICAO_COM_MAIOR_ID = False
                 KING_ID = addr_port
                 KING_SEMAPHORE.release()
-
-            elif(message == MSG_LIDER):
-                QTD_REC_LIDER += 1
 
             elif(message == MSG_OK):
                 MINHA_ELEICAO = False
@@ -166,6 +163,17 @@ def thread_escuta_mensangens():
         except:
             pass
     print("Thread de escuta saindo")
+
+'''
+Comandos da Interface:
+
+close => encerra o processo do nó.
+terminar => encerra todos os nós.
+falhar => falha o nó, que para de responder mensagens dos outros nós.
+recuperar => faz o no voltar a responder mensagens.
+dados => imprime um relatório com todos os dados.
+
+'''
 
 def thread_interface():
 
@@ -244,10 +252,12 @@ def iniciar_eleicao():
         print("Iniciando eleição! ")
         MINHA_ELEICAO = True
         enviar_mensagem(MSG_ELEICAO, broadcast = True)
+        QTD_ENV_ELEICAO += 1
         time.sleep(16)
         if(MINHA_ELEICAO):
             print("Eu venci a eleição! ")
             enviar_mensagem(MSG_COORDENADOR, broadcast = True)
+            QTD_ENV_COORDENADOR +=1
         else:
             print("Eu perdi a eleição <°(((><")
     else:
@@ -278,18 +288,24 @@ def imprimir_relatorio():
     global QTD_ENV_VIVO
     global QTD_ENV_VIVO_OK
     global QTD_ENV_ELEICAO
-    global QTD_ENV_LIDER
+    global QTD_ENV_COORDENADOR
     global QTD_ENV_OK
 
     global QTD_REC_VIVO
     global QTD_REC_VIVO_OK
     global QTD_REC_ELEICAO
-    global QTD_REC_LIDER
+    global QTD_REC_COORDENADOR
     global QTD_REC_OK
 
-    RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_LIDER}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\nOK:{QTD_ENV_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_LIDER}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\nOK:{QTD_REC_OK}\n"
+    RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_COORDENADOR}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\nOK:{QTD_ENV_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_COORDENADOR}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\nOK:{QTD_REC_OK}\n"
 
     print(RELATORIO)
+
+def doença_do_rei():
+    while True:
+        if (KING_ID == MY_PORT):
+            FINGINDO_MORTO = True
+            return
 
 # CHAMANDO THREADS
 if __name__ == "__main__":
