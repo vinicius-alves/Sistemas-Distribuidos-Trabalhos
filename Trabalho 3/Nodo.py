@@ -75,18 +75,19 @@ def thread_que_verifica_king():
     global WAITING_KING
     global QTD_ENV_VIVO
     global MINHA_ELEICAO
+    global FINGINDO_MORTO
+
     while not(DEVO_MORRER):
 
         KING_CHECKED = False
         WAITING_KING = True
         print("Tentando verificar o rei\n")
         QTD_ENV_VIVO += 1
-        print("atual valor de qtd_env_vivo é: ", QTD_ENV_VIVO)     
         enviar_mensagem(MSG_VIVO, node_port = KING_ID)
 
         time.sleep(8)
 
-        if(not(KING_CHECKED)):
+        if(not(KING_CHECKED) and not(FINGINDO_MORTO)):
             print("The king is dead!!\nAnarchy! ")
             iniciar_eleicao()
             KING_SEMAPHORE.acquire(True)
@@ -145,7 +146,7 @@ def thread_escuta_mensangens():
                 break
             elif(message == MSG_ELEICAO):
                 QTD_REC_ELEICAO += 1
-                if (MY_PORT > addr_port):
+                if (MY_PORT > addr_port and not(FINGINDO_MORTO)):
                     QTD_ENV_OK += 1
                     enviar_mensagem(MSG_OK, node_port = addr_port)
                 else:
