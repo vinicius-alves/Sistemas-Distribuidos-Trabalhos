@@ -33,6 +33,14 @@ KING_ID = int(ports_list[0])
 KING_CHECKED = False
 WAITING_KING = False
 KING_SEMAPHORE = threading.BoundedSemaphore(1)
+
+#Evento que coordenará a thread que verifica o rei e a thread da doença_do_rei.
+IAM_KING = threading.Event()
+IAM_NOT_KING = threading.Event()
+#Inicialmente assumo não ser rei. A thread que verifica o rei fará o set() desse evento caso o processo não seja rei.
+IAM_NOT_KING.clear()
+
+
 print("The king is", KING_ID)
 
 # Eleição
@@ -76,9 +84,15 @@ def thread_que_verifica_king():
     global QTD_ENV_VIVO
     global MINHA_ELEICAO
     global FINGINDO_MORTO
+    
+    global IAM_NOT_KING
+
+    if (MY_PORT != KING_ID):
+        IAM_NOT_KING.set()
 
     while not(DEVO_MORRER):
-
+        #Espera até que não seja rei para verificar o rei.
+        #IAM_NOT_KING.wait()
         KING_CHECKED = False
         WAITING_KING = True
         print("Tentando verificar o rei\n")
@@ -120,6 +134,9 @@ def thread_escuta_mensangens():
     global QTD_REC_ELEICAO
     global QTD_ENV_OK
 
+    global IAM_NOT_KING
+    global IAM_KING
+
     while (not DEVO_MORRER):        
         #buffer size is 1024 bytes. "data" is the message received, "addr" is the address of the sending process, which is a tuple (ip, port).
         try: 
@@ -156,10 +173,15 @@ def thread_escuta_mensangens():
                 QTD_REC_COORDENADOR += 1
                 OUTRA_ELEICAO_COM_MAIOR_ID = False
                 KING_ID = addr_port
+                if (KING_ID == MY_PORT):
+                    IAM_KING.set()
+                    IAM_NOT_KING.clear()
                 KING_SEMAPHORE.release()
 
             elif(message == MSG_OK):
                 MINHA_ELEICAO = False
+            elif (message == "doença"):
+                thread_da_doença_do_rei.start()
 
         except:
             pass
@@ -206,6 +228,8 @@ def thread_interface():
             FINGINDO_MORTO = False
         if (message == "dados"):
             imprimir_relatorio()
+        if (message == "doença"):
+            enviar_mensagem(message, broadcast = True)
         time.sleep(0.2)
     print("Thread de interface saindo")
     
@@ -301,12 +325,12 @@ def imprimir_relatorio():
     RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_COORDENADOR}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\nOK:{QTD_ENV_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_COORDENADOR}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\nOK:{QTD_REC_OK}\n"
 
     print(RELATORIO)
-
+#É a função executada pela thread da doença do rei. Assim que o processo vira rei ele falha.
 def doença_do_rei():
-    while True:
-        if (KING_ID == MY_PORT):
-            FINGINDO_MORTO = True
-            return
+    print("Ó não, fui afligido por uma doença perniciosa!")
+    IAM_KING.wait()    
+    FINGINDO_MORTO = True
+
 
 # CHAMANDO THREADS
 if __name__ == "__main__":
@@ -314,14 +338,16 @@ if __name__ == "__main__":
     #Cria as threads
 
     # Thread responsável por receber mensagens e tomar ações.
-    thread_escuta_mensangens = threading.Thread(target=thread_escuta_mensangens, args=())
+    thread_escuta_mensangens = threading.Thread(target=thread_escuta_mensangens)
 
     # Thread responsável por gerenciar interface com usuário
-    thread_interface = threading.Thread(target=thread_interface, args=())
+    thread_interface = threading.Thread(target=thread_interface)
 
     # Thread responsável em detectar a presença do líder
-    thread_que_verifica_king = threading.Thread(target=thread_que_verifica_king, args=())
+    thread_que_verifica_king = threading.Thread(target=thread_que_verifica_king, daemon = True)
 
+    #Thread que espera o processo se tornar rei e falha esse processo.
+    thread_da_doença_do_rei = threading.Thread(target= doença_do_rei, daemon = True)
 
     #Inicia as threads
     thread_interface.start()
@@ -330,6 +356,5 @@ if __name__ == "__main__":
     
     #Faz com que main espere as threads finalizarem antes de fechar.
     thread_interface.join()    
-    thread_que_verifica_king.join()
 
     message = input("Saindo.. Pressione enter para continuar... ")
