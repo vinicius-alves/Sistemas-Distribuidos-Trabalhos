@@ -62,9 +62,6 @@ QTD_REC_ELEICAO = 0
 QTD_REC_LIDER = 0
 QTD_REC_OK = 0
 
-#Relatório é impresso no terminal quando usuário emite o comando dados
-RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_LIDER}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_LIDER}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\n"
-
 #Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência.
 
 #################################################################
@@ -85,6 +82,7 @@ def thread_que_verifica_king():
         WAITING_KING = True
         print("Tentando verificar o rei\n")
         QTD_ENV_VIVO += 1
+        print("atual valor de qtd_env_vivo é: ", QTD_ENV_VIVO)     
         enviar_mensagem(MSG_VIVO, node_port = KING_ID)
 
         time.sleep(8)
@@ -114,6 +112,8 @@ def thread_escuta_mensangens():
     global MSG_VIVO
     global MSG_VIVO_OK
 
+    global QTD_ENV_VIVO_OK
+
     global QTD_REC_VIVO
     global QTD_REC_LIDER
     global QTD_REC_VIVO_OK
@@ -133,6 +133,7 @@ def thread_escuta_mensangens():
                 QTD_REC_VIVO += 1
                 if (not FINGINDO_MORTO):
                     enviar_mensagem(MSG_VIVO_OK, node_port = addr_port)
+                    QTD_ENV_VIVO_OK += 1
             
             elif(message == MSG_VIVO_OK and addr_port == KING_ID and WAITING_KING):
                 QTD_REC_VIVO_OK += 1
@@ -195,7 +196,7 @@ def thread_interface():
         if (message == "recuperar"):
             FINGINDO_MORTO = False
         if (message == "dados"):
-            print(RELATORIO)
+            imprimir_relatorio()
         time.sleep(0.2)
     print("Thread de interface saindo")
     
@@ -271,6 +272,24 @@ def sair_da_lista():
         if node != str(MY_PORT) + "\n":
             f.write(str(node))
     f.close()
+
+def imprimir_relatorio():
+
+    global QTD_ENV_VIVO
+    global QTD_ENV_VIVO_OK
+    global QTD_ENV_ELEICAO
+    global QTD_ENV_LIDER
+    global QTD_ENV_OK
+
+    global QTD_REC_VIVO
+    global QTD_REC_VIVO_OK
+    global QTD_REC_ELEICAO
+    global QTD_REC_LIDER
+    global QTD_REC_OK
+
+    RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_LIDER}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\nOK:{QTD_ENV_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_LIDER}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\nOK:{QTD_REC_OK}\n"
+
+    print(RELATORIO)
 
 # CHAMANDO THREADS
 if __name__ == "__main__":
