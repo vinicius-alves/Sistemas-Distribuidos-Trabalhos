@@ -37,8 +37,11 @@ KING_SEMAPHORE = threading.BoundedSemaphore(1)
 #Evento que coordenará a thread que verifica o rei e a thread da doença_do_rei.
 IAM_KING = threading.Event()
 IAM_NOT_KING = threading.Event()
-#Inicialmente assumo não ser rei. A thread que verifica o rei fará o set() desse evento caso o processo não seja rei.
-IAM_NOT_KING.clear()
+#Se processo começar como rei, dou set() em IAM_KING e clear() em IM_NOT_KING
+if (MY_PORT == KING_ID):
+    IAM_KING.set()
+    IAM_NOT_KING.clear()
+
 
 
 print("The king is", KING_ID)
@@ -195,6 +198,8 @@ terminar => encerra todos os nós.
 falhar => falha o nó, que para de responder mensagens dos outros nós.
 recuperar => faz o no voltar a responder mensagens.
 dados => imprime um relatório com todos os dados.
+doença => Libera a doença do rei: Assim que um nodo se torna rei, ele falha.
+rei => Informa quem é o rei atual. Se não ouver rei atual, informa que uma eleição está em andamento.
 
 '''
 
@@ -203,6 +208,7 @@ def thread_interface():
     global DEVO_MORRER
     global MSG_CLOSE
     global RELATORIO
+    
     while not(DEVO_MORRER):
 
         message = input("O que devo fazer? ")
@@ -281,6 +287,7 @@ def iniciar_eleicao():
         time.sleep(16)
         if(MINHA_ELEICAO):
             print("Eu venci a eleição! ")
+            IAM_KING.set()
             enviar_mensagem(MSG_COORDENADOR, broadcast = True)
             QTD_ENV_COORDENADOR +=1
         else:
@@ -322,10 +329,12 @@ def imprimir_relatorio():
     global QTD_REC_COORDENADOR
     global QTD_REC_OK
 
+    #fString com relatório formatado.
     RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_COORDENADOR}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\nOK:{QTD_ENV_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_COORDENADOR}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\nOK:{QTD_REC_OK}\n"
 
     print(RELATORIO)
-#É a função executada pela thread da doença do rei. Assim que o processo vira rei ele falha.
+
+#Função executada pela thread da doença do rei. Assim que o processo vira rei ele falha.
 def doença_do_rei():
     print("Ó não, fui afligido por uma doença perniciosa!")
     IAM_KING.wait()    
@@ -346,7 +355,7 @@ if __name__ == "__main__":
     # Thread responsável em detectar a presença do líder
     thread_que_verifica_king = threading.Thread(target=thread_que_verifica_king, daemon = True)
 
-    #Thread que espera o processo se tornar rei e falha esse processo.
+    #Thread que espera o processo se tornar rei e falha esse processo.Tem que ser uma Daemon thread, isso faz com que o programa possa finalizar sem esperar essa thread terminar.
     thread_da_doença_do_rei = threading.Thread(target= doença_do_rei, daemon = True)
 
     #Inicia as threads
