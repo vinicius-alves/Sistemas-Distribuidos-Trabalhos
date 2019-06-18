@@ -15,7 +15,7 @@ MY_PORT = s.getsockname()[1]
 print("Estou na porta " + str(MY_PORT))
 f = open("port_list.txt", "a")
 f.write(str(MY_PORT) + "\n")
-f.close()        
+f.close()
 
 #Após escrever no arquivo, abre e lê para verificar se a primeira linha escrita é sua própria porta.
 f = open("port_list.txt", "r")
@@ -221,7 +221,7 @@ def thread_interface():
     global DEVO_MORRER
     global MSG_CLOSE
     global RELATORIO
-    
+    global FINGINDO_MORTO
     while not(DEVO_MORRER):
 
         message = input("O que devo fazer agora? ")
@@ -241,6 +241,7 @@ def thread_interface():
             get_king()
             
         if (message == "falhar"):
+            print('falhei')
             FINGINDO_MORTO = True
 
         if (message == "recuperar"):
@@ -260,7 +261,10 @@ def thread_interface():
     
 def get_king():
     if (not WAITING_KING):
-        m="O atual rei é: " + str(KING_ID) + "\n"+"Longa vida ao rei!"
+        if (IAM_KING.is_set()):
+            m="Eu sou o atual rei: " + str(KING_ID) + "\n"+"Longa vida a mim!"
+        else:
+            m="O atual rei é: " + str(KING_ID) + "\n"+"Longa vida ao rei!"
     else:
         m="Nosso rei foi decapitado, estamos escolhendo outro.\n" + "Não fui eu que decapitei ok?"
 
@@ -401,6 +405,7 @@ def imprimir_relatorio(id_thread):
 
 #Função executada pela thread da doença do rei. Assim que o processo vira rei ele falha.
 def doença_do_rei():
+    global  FINGINDO_MORTO
     print_s(id_thread =5, string_to_print = "Ó não, fui afligido por uma doença perniciosa!")
     IAM_KING.wait()    
     FINGINDO_MORTO = True
@@ -410,6 +415,7 @@ not_ultimo = threading.Event()
 not_ultimo.set()
 def thread_ultimo():
     global not_ultimo
+    global MSG_CLOSE
     while (not_ultimo.is_set()):
         not_ultimo.clear()
         enviar_mensagem("ultimo", broadcast=True, id_thread = 4)
@@ -449,6 +455,6 @@ if __name__ == "__main__":
     
     #Faz com que main espere as threads finalizarem antes de fechar.
     thread_interface.join()    
-    thread_que_verifica_king.join()
+    #thread_que_verifica_king.join()
 
     message = input("Saindo.. Pressione enter para continuar... ")
