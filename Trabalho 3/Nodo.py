@@ -4,14 +4,13 @@ import threading
 
                         #########SETUP INICIAL###########
 
-# Cria o socket, AF_INET é IPv4.
-# sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+# Cria o socket. AF_INET é IPv4.
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # O "0"  no luga da porta faz com que o OS escolha uma porta livre por conta própria.
 s.bind(("127.0.0.1", 0))
 
-#Retorna uma tupla IP, porta, o índice pega só a porta.
+#Retorna uma tupla IP, porta, o índice [1] pega só a porta.
 MY_PORT = s.getsockname()[1]
 print("Estou na porta " + str(MY_PORT))
 f = open("port_list.txt", "a")
@@ -26,6 +25,7 @@ f.close()
 
 # É setada em True para avisar todas as threads que devem iniciar harakiri.
 DEVO_MORRER = False
+# É setada true para que todas as threads parem de responder a mensagens
 FINGINDO_MORTO = False
 
 # Identificação do rei
@@ -34,13 +34,12 @@ KING_CHECKED = False
 WAITING_KING = False
 KING_SEMAPHORE = threading.BoundedSemaphore(1)
 
-#Evento que coordenará a thread que verifica o rei e a thread da doença_do_rei.
-IAM_KING = threading.Event()
+#Eventos que coordenarão a thread que verifica o rei e a thread da doença_do_rei.
+IAM_KING = threading.Event() #Se True, thread que verifica o rei dorme.
 IAM_NOT_KING = threading.Event()
-#Se processo começar como rei, dou set() em IAM_KING e clear() em IM_NOT_KING
-if (MY_PORT == KING_ID):
-    IAM_KING.set()
-    IAM_NOT_KING.clear()
+#Se processo começar como rei, dou set() em IAM_KING
+IAM_KING.set()
+    
 
 
 
@@ -72,7 +71,7 @@ QTD_REC_ELEICAO = 0
 QTD_REC_COORDENADOR = 0
 QTD_REC_OK = 0
 
-#Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência.
+#Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência: ports_list.txt
 
 #################################################################
 
@@ -87,7 +86,7 @@ def thread_que_verifica_king():
     global QTD_ENV_VIVO
     global MINHA_ELEICAO
     global FINGINDO_MORTO
-    
+    global QTD_ENV_ELEICAO
     global IAM_NOT_KING
 
     if (MY_PORT != KING_ID):
@@ -95,7 +94,7 @@ def thread_que_verifica_king():
 
     while not(DEVO_MORRER):
         #Espera até que não seja rei para verificar o rei.
-        #IAM_NOT_KING.wait()
+        IAM_NOT_KING.wait()
         KING_CHECKED = False
         WAITING_KING = True
         print("Tentando verificar o rei\n")
@@ -139,6 +138,7 @@ def thread_escuta_mensangens():
 
     global IAM_NOT_KING
     global IAM_KING
+    global not_ultimo
 
     while (not DEVO_MORRER):        
         #buffer size is 1024 bytes. "data" is the message received, "addr" is the address of the sending process, which is a tuple (ip, port).
@@ -183,8 +183,15 @@ def thread_escuta_mensangens():
 
             elif(message == MSG_OK):
                 MINHA_ELEICAO = False
+
+            #IFs daqui pra baixo são para implementação das funções que facilitaram a tomada de dados para o problema.
             elif (message == "doença"):
                 thread_da_doença_do_rei.start()
+            elif (message == "ultimo" and FINGINDO_MORTO == False):
+                enviar_mensagem("ultimo_ok", node_port = addr_port)
+            elif (message == "ultimo_ok"):
+                not_ultimo.set()
+
 
         except:
             pass
@@ -193,14 +200,13 @@ def thread_escuta_mensangens():
 '''
 Comandos da Interface:
 
-close => encerra o processo do nó.
-terminar => encerra todos os nós.
-falhar => falha o nó, que para de responder mensagens dos outros nós.
-recuperar => faz o no voltar a responder mensagens.
-dados => imprime um relatório com todos os dados.
-doença => Libera a doença do rei: Assim que um nodo se torna rei, ele falha.
-rei => Informa quem é o rei atual. Se não ouver rei atual, informa que uma eleição está em andamento.
-
+Close => encerra o processo do nó.
+Terminar => encerra todos os nós.
+Falhar => falha o nó, que para de responder mensagens dos outros nós.
+Recuperar => faz o no voltar a responder mensagens.
+Dados => imprime um relatório com todos os dados.
+Doença => Libera a doença do rei: Assim que um nodo se torna rei, ele falha.
+Rei => Informa quem é o rei atual. Se não ouver rei atual, informa que uma eleição está em andamento.
 '''
 
 def thread_interface():
@@ -219,35 +225,38 @@ def thread_interface():
             message = message.replace("close", MSG_CLOSE)
             enviar_mensagem(message, node_port = MY_PORT)
             sair_da_lista()
-        # Aqui, como substituo o comando que chega pelo input pela mensagem que vai ser realmente broadcastada, 
-        # guardada numa variável global, fico livre pra troca essa mensagem pela que eu quiser, se no futuro eu perceber que
-        # é necessário que todas mensagens broadcastadas tenham o mesmo tamanho.
+        
         if (message == "terminar"): 
             message = message.replace("terminar", MSG_CLOSE)
             enviar_mensagem(message, broadcast = True)
+
         if (message == "rei"):
             get_king()
-            #print("O atual rei é: " + str(KING_ID) + "\n")
+            
         if (message == "falhar"):
             FINGINDO_MORTO = True
+
         if (message == "recuperar"):
             FINGINDO_MORTO = False
+
         if (message == "dados"):
             imprimir_relatorio()
+
         if (message == "doença"):
             enviar_mensagem(message, broadcast = True)
         time.sleep(0.2)
+
     print("Thread de interface saindo")
     
-#Definição das funções que serão chamadas dentro do programa
-    #Funções que serão chamadas pela interface.
+#Definição das funções que serão chamadas dentro das threads
+    
 def get_king():
     if (not WAITING_KING):
         print("O atual rei é: " + str(KING_ID) + "\n")
         print("Longa vida ao rei!\n")
     else:
         print("Nosso rei foi decapitado, estamos escolhendo outro.\n")
-        print("Não fui eu que decapitei ok?\n")
+        print("Não fui eu que decapitei, ok?\n")
 
 def enviar_mensagem(message, node_port=-1, broadcast = False): 
 
@@ -273,8 +282,8 @@ def enviar_mensagem(message, node_port=-1, broadcast = False):
         else:
             print("Ocorreu um erro ao enviar " + message+" para o nó "+str(node_port))
 
-    #Funções que serão chamadas pela thread que verifica o rei.
 
+#Funções que serão chamadas pela thread que verifica o rei.
 def iniciar_eleicao():
     global MINHA_ELEICAO
     global OUTRA_ELEICAO_COM_MAIOR_ID
@@ -300,7 +309,7 @@ def sair_da_lista():
     print("Programa fechando")
     global MY_PORT
     global DEVO_MORRER
-    #guarda as linhas do arquivo na variável ports_list
+    #guarda as linhas do arquivo na variável f
     f = open("port_list.txt", "r")
 
     #Aqui, caso eu usasse o método f.read, port_list receberia uma string inteira, o que é menos prático para iteração que list(f) que retorna uma lista com as linhas do arquivo.
@@ -340,11 +349,26 @@ def doença_do_rei():
     IAM_KING.wait()    
     FINGINDO_MORTO = True
 
+#Definição de função que vai servir para impressão do relatório de avaliação no final do programa.
+not_ultimo = threading.Event()
+not_ultimo.set()
+def thread_ultimo():
+    global not_ultimo
+    while (not_ultimo.is_set()):
+        not_ultimo.clear()
+        enviar_mensagem("ultimo", broadcast=True)
+        try:
+            not_ultimo.wait(timeout=3)           
+        except:
+            imprimir_relatorio()
+            enviar_mensagem(MSG_CLOSE, broadcast=True)
+        time.sleep(8)
+
 
 # CHAMANDO THREADS
 if __name__ == "__main__":
 
-    #Cria as threads
+    ################Criando as threads################
 
     # Thread responsável por receber mensagens e tomar ações.
     thread_escuta_mensangens = threading.Thread(target=thread_escuta_mensangens)
@@ -355,15 +379,18 @@ if __name__ == "__main__":
     # Thread responsável em detectar a presença do líder
     thread_que_verifica_king = threading.Thread(target=thread_que_verifica_king, daemon = True)
 
+    thread_ultimo = threading.Thread(target=thread_ultimo, daemon = True)
+
     #Thread que espera o processo se tornar rei e falha esse processo.Tem que ser uma Daemon thread, isso faz com que o programa possa finalizar sem esperar essa thread terminar.
     thread_da_doença_do_rei = threading.Thread(target= doença_do_rei, daemon = True)
 
-    #Inicia as threads
+    ################Iniciando as threads################
     thread_interface.start()
     thread_escuta_mensangens.start()
     thread_que_verifica_king.start()
+    thread_ultimo.start()
     
     #Faz com que main espere as threads finalizarem antes de fechar.
     thread_interface.join()    
-
+    
     message = input("Saindo.. Pressione enter para continuar... ")
