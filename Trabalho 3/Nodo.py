@@ -204,6 +204,7 @@ def thread_escuta_mensangens():
                 QTD_REC_LIDER += 1
                 JA_TENTEI_ME_ELEGER = False
                 OUTRA_ELEICAO_COM_MAIOR_ID = False
+                MINHA_ELEICAO = False
                 WAITING_KING = False
                 KING_ID = addr_port
                 KING_SEMAPHORE.release()
@@ -375,7 +376,7 @@ def iniciar_eleicao(id_thread):
         print_s(id_thread = id_thread, string_to_print = "Iniciando eleição! ")
         qtd_nodes = enviar_mensagem(MSG_ELEICAO, broadcast = True, id_thread = id_thread)
         QTD_ENV_ELEICAO +=qtd_nodes
-        time.sleep(16)
+        time.sleep(32)
         if(MINHA_ELEICAO):
             m = "Eu venci a eleição! "
             IAM_KING.set()
@@ -480,8 +481,8 @@ def imprimir_relatorio_em_csv():
     global MY_PORT
 
     
-    #header = "IDPROCESSO; QTD_ENV_ELEICAO; QTD_ENV_LIDER; QTD_ENV_VIVO; QTD_ENV_VIVO_OK; QTD_REC_ELEICAO; QTD_REC_LIDER; QTD_REC_VIVO; QTD_REC_OK; QTD_REC_VIVO_OK"
-    linha = str(MY_PORT) + '; '+ str(QTD_ENV_ELEICAO)+ '; '+ str(QTD_ENV_LIDER)+ '; '+ str(QTD_ENV_VIVO)+ '; '+ str(QTD_ENV_VIVO_OK)+ '; '+ str(QTD_REC_ELEICAO)+ '; '+\
+    #header = "IDPROCESSO; QTD_ENV_ELEICAO; QTD_ENV_LIDER; QTD_ENV_OK; QTD_ENV_VIVO; QTD_ENV_VIVO_OK; QTD_REC_ELEICAO; QTD_REC_LIDER; QTD_REC_VIVO; QTD_REC_OK; QTD_REC_VIVO_OK"
+    linha = str(MY_PORT) + '; '+ str(QTD_ENV_ELEICAO)+ '; '+ str(QTD_ENV_LIDER)+ '; '+str(QTD_ENV_OK)+'; '+ str(QTD_ENV_VIVO)+ '; '+ str(QTD_ENV_VIVO_OK)+ '; '+ str(QTD_REC_ELEICAO)+ '; '+\
     str(QTD_REC_LIDER)+ '; '+str(QTD_REC_VIVO)+ '; '+str(QTD_REC_OK)+ '; '+str(QTD_REC_VIVO_OK)
 
     f = open(ARQUIVO_RELATORIO_CSV, "a")
