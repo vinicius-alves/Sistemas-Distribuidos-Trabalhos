@@ -21,7 +21,7 @@ f.close()
 #Após escrever no arquivo, abre e lê para verificar se a primeira linha escrita é sua própria porta.
 f = open("port_list.txt", "r")
 ports_list = list(f)
-print("Presentes portas são: " + f.read())
+#print("Presentes portas são: " + f.read())
 f.close()
 
 # É setada em True para avisar todas as threads que devem iniciar harakiri.
@@ -33,20 +33,17 @@ KING_ID = int(ports_list[0])
 KING_CHECKED = False
 WAITING_KING = False
 KING_SEMAPHORE = threading.BoundedSemaphore(1)
+print("O rei é", KING_ID,"\n")
 
-#Evento que coordenará a thread que verifica o rei e a thread da doença_do_rei.
-IAM_KING = threading.Event()
-IAM_NOT_KING = threading.Event()
-#Inicialmente assumo não ser rei. A thread que verifica o rei fará o set() desse evento caso o processo não seja rei.
-IAM_NOT_KING.clear()
-
-
-print("The king is", KING_ID)
+# Semáforo para impressão
+PRINT_SEMAPHORE = threading.BoundedSemaphore(1)
+LAST_THREAD_TO_PRINT = - 1
 
 # Eleição
 # Minha eleição está ocorrendo ou outra eleição de um nó com maior ID está ocorrendo.
 MINHA_ELEICAO = False
 OUTRA_ELEICAO_COM_MAIOR_ID = False
+JA_TENTEI_ME_ELEGER = False
 
 #Definição das mensagens que serão recebidas pela thread que escuta mensagens.
 MSG_VIVO    = "VIVO"
@@ -55,19 +52,23 @@ MSG_CLOSE   = "CLOSE"
 MSG_ELEICAO = "ELEICAO"
 MSG_OK      = "OK"
 MSG_COORDENADOR = "COORDENADOR"
+MSG_LIDER = str(s.getsockname()[1])
 
 #Armazenamento do número de mensagens enviadas e recebidas de  cada tipo.
-QTD_ENV_VIVO = 0
+QTD_ENV_VIVO    = 0
 QTD_ENV_VIVO_OK = 0
 QTD_ENV_ELEICAO = 0
-QTD_ENV_COORDENADOR = 0
-QTD_ENV_OK = 0
+QTD_ENV_LIDER   = 0
+QTD_ENV_OK      = 0
 
-QTD_REC_VIVO = 0
+QTD_REC_VIVO    = 0
 QTD_REC_VIVO_OK = 0
 QTD_REC_ELEICAO = 0
-QTD_REC_COORDENADOR = 0
-QTD_REC_OK = 0
+QTD_REC_LIDER   = 0
+QTD_REC_OK      = 0
+
+#Relatório é impresso no terminal quando usuário emite o comando dados
+RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_LIDER}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_LIDER}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\n"
 
 #Setup inicial do Nodo terminado, temos uma porta e ela está anotada no arquivo de referência.
 
@@ -82,30 +83,21 @@ def thread_que_verifica_king():
     global MSG_VIVO
     global WAITING_KING
     global QTD_ENV_VIVO
-    global MINHA_ELEICAO
-    global FINGINDO_MORTO
-    
-    global IAM_NOT_KING
-
-    if (MY_PORT != KING_ID):
-        IAM_NOT_KING.set()
-
     while not(DEVO_MORRER):
-        #Espera até que não seja rei para verificar o rei.
-        #IAM_NOT_KING.wait()
+
         KING_CHECKED = False
         WAITING_KING = True
-        print("Tentando verificar o rei\n")
+        print_s(id_thread =3, string_to_print = "Tentando verificar o rei")
+        #print("Tentando verificar o rei\n")
         QTD_ENV_VIVO += 1
-        enviar_mensagem(MSG_VIVO, node_port = KING_ID)
+        enviar_mensagem(MSG_VIVO, node_port = KING_ID, id_thread = 3)
 
         time.sleep(8)
 
-        if(not(KING_CHECKED) and not(FINGINDO_MORTO)):
-            print("The king is dead!!\nAnarchy! ")
-            iniciar_eleicao()
+        if(not(KING_CHECKED)):
+            print_s(id_thread =3, string_to_print = "The king is dead!!\nAnarchy!\n ")
+            iniciar_eleicao(id_thread = 3)
             KING_SEMAPHORE.acquire(True)
-    print("Thread de verificação do rei saindo")
 
 
 def thread_escuta_mensangens():
@@ -121,21 +113,16 @@ def thread_escuta_mensangens():
 
     global MSG_CLOSE
     global MSG_ELEICAO
-    global MSG_COORDENADOR
+    global MSG_LIDER
     global MSG_OK
     global MSG_VIVO
     global MSG_VIVO_OK
 
-    global QTD_ENV_VIVO_OK
-
     global QTD_REC_VIVO
-    global QTD_REC_COORDENADOR
+    global QTD_REC_LIDER
     global QTD_REC_VIVO_OK
     global QTD_REC_ELEICAO
     global QTD_ENV_OK
-
-    global IAM_NOT_KING
-    global IAM_KING
 
     while (not DEVO_MORRER):        
         #buffer size is 1024 bytes. "data" is the message received, "addr" is the address of the sending process, which is a tuple (ip, port).
@@ -144,13 +131,13 @@ def thread_escuta_mensangens():
             addr_port = addr[1]
             message = data.decode("utf-8") 
 
-            print ("Mensagem recebida: " + message + " de "+ str(addr) + "\n")
+            m="Mensagem recebida: " + message + " de "+ str(addr_port)
+            print_s(id_thread =1, string_to_print = m)
 
             if(message == MSG_VIVO):
                 QTD_REC_VIVO += 1
                 if (not FINGINDO_MORTO):
-                    enviar_mensagem(MSG_VIVO_OK, node_port = addr_port)
-                    QTD_ENV_VIVO_OK += 1
+                    enviar_mensagem(MSG_VIVO_OK, node_port = addr_port, id_thread =1)
             
             elif(message == MSG_VIVO_OK and addr_port == KING_ID and WAITING_KING):
                 QTD_REC_VIVO_OK += 1
@@ -163,40 +150,29 @@ def thread_escuta_mensangens():
                 break
             elif(message == MSG_ELEICAO):
                 QTD_REC_ELEICAO += 1
-                if (MY_PORT > addr_port and not(FINGINDO_MORTO)):
+                if (MY_PORT > addr_port):
                     QTD_ENV_OK += 1
-                    enviar_mensagem(MSG_OK, node_port = addr_port)
+                    enviar_mensagem(MSG_OK, node_port = addr_port, id_thread =1)
+                    iniciar_eleicao(id_thread =1)
                 else:
                     OUTRA_ELEICAO_COM_MAIOR_ID = True
 
             elif(message == MSG_COORDENADOR):
-                QTD_REC_COORDENADOR += 1
+                JA_TENTEI_ME_ELEGER = False
                 OUTRA_ELEICAO_COM_MAIOR_ID = False
                 KING_ID = addr_port
-                if (KING_ID == MY_PORT):
-                    IAM_KING.set()
-                    IAM_NOT_KING.clear()
                 KING_SEMAPHORE.release()
+
+            elif(message == MSG_LIDER):
+                QTD_REC_LIDER += 1
 
             elif(message == MSG_OK):
                 MINHA_ELEICAO = False
-            elif (message == "doença"):
-                thread_da_doença_do_rei.start()
+
 
         except:
             pass
-    print("Thread de escuta saindo")
-
-'''
-Comandos da Interface:
-
-close => encerra o processo do nó.
-terminar => encerra todos os nós.
-falhar => falha o nó, que para de responder mensagens dos outros nós.
-recuperar => faz o no voltar a responder mensagens.
-dados => imprime um relatório com todos os dados.
-
-'''
+    print_s(id_thread =1, string_to_print = "Thread de escuta saindo")
 
 def thread_interface():
 
@@ -205,20 +181,20 @@ def thread_interface():
     global RELATORIO
     while not(DEVO_MORRER):
 
-        message = input("O que devo fazer? ")
+        message = input("O que devo fazer agora? ")
         message = message.replace(' ','')
         message = message.lower()
 
         if (message == "close"):
             message = message.replace("close", MSG_CLOSE)
-            enviar_mensagem(message, node_port = MY_PORT)
+            enviar_mensagem(message, node_port = MY_PORT, id_thread =2)
             sair_da_lista()
         # Aqui, como substituo o comando que chega pelo input pela mensagem que vai ser realmente broadcastada, 
         # guardada numa variável global, fico livre pra troca essa mensagem pela que eu quiser, se no futuro eu perceber que
         # é necessário que todas mensagens broadcastadas tenham o mesmo tamanho.
         if (message == "terminar"): 
             message = message.replace("terminar", MSG_CLOSE)
-            enviar_mensagem(message, broadcast = True)
+            enviar_mensagem(message, broadcast = True, id_thread =2)
         if (message == "rei"):
             get_king()
             #print("O atual rei é: " + str(KING_ID) + "\n")
@@ -227,23 +203,22 @@ def thread_interface():
         if (message == "recuperar"):
             FINGINDO_MORTO = False
         if (message == "dados"):
-            imprimir_relatorio()
-        if (message == "doença"):
-            enviar_mensagem(message, broadcast = True)
+            print(RELATORIO)
         time.sleep(0.2)
-    print("Thread de interface saindo")
+
+    print_s(id_thread =2, string_to_print = "Thread de interface saindo...")
     
 #Definição das funções que serão chamadas dentro do programa
     #Funções que serão chamadas pela interface.
 def get_king():
     if (not WAITING_KING):
-        print("O atual rei é: " + str(KING_ID) + "\n")
-        print("Longa vida ao rei!\n")
+        m="O atual rei é: " + str(KING_ID) + "\n"+"Longa vida ao rei!"
     else:
-        print("Nosso rei foi decapitado, estamos escolhendo outro.\n")
-        print("Não fui eu que decapitei ok?\n")
+        m="Nosso rei foi decapitado, estamos escolhendo outro.\n" + "Não fui eu que decapitei ok?"
 
-def enviar_mensagem(message, node_port=-1, broadcast = False): 
+    print_s(id_thread =2, string_to_print = m)
+
+def enviar_mensagem(message, node_port=-1, broadcast = False, id_thread = -1): 
 
     try:
 
@@ -256,37 +231,43 @@ def enviar_mensagem(message, node_port=-1, broadcast = False):
                 s.sendto(message.encode("utf-8"), ("127.0.0.1", int(node)))
             f.close()
 
-            print ("Mensagem enviada: " + str(message) + " para todos os nós"+ "\n")
+            m = "Mensagem enviada: " + str(message) + " para todos os nós"
+            print_s(id_thread = id_thread, string_to_print = m)
 
         else:
             s.sendto(message.encode("utf-8"), ("127.0.0.1", int(node_port)))
-            print ("Mensagem enviada: " + str(message) + " para "+ str(node_port) + "\n")
+            m = "Mensagem enviada: " + str(message) + " para "+ str(node_port) 
+            print_s(id_thread = id_thread, string_to_print = m)
     except:
         if(broadcast):
-            print("Ocorreu um erro ao enviar " + message+" em broadcast")
+            m = "Ocorreu um erro ao enviar " + message+" em broadcast"
         else:
-            print("Ocorreu um erro ao enviar " + message+" para o nó "+str(node_port))
+            m = "Ocorreu um erro ao enviar " + message+" para o nó "+str(node_port)
+
+        print_s(id_thread = id_thread, string_to_print = m)
 
     #Funções que serão chamadas pela thread que verifica o rei.
 
-def iniciar_eleicao():
+def iniciar_eleicao(id_thread):
     global MINHA_ELEICAO
     global OUTRA_ELEICAO_COM_MAIOR_ID
+    global KING_SEMAPHORE
+    global JA_TENTEI_ME_ELEGER
 
-    if(not(OUTRA_ELEICAO_COM_MAIOR_ID)):
+    if(not(JA_TENTEI_ME_ELEGER) and not(OUTRA_ELEICAO_COM_MAIOR_ID)):
+        JA_TENTEI_ME_ELEGER = True
         print("Iniciando eleição! ")
         MINHA_ELEICAO = True
-        enviar_mensagem(MSG_ELEICAO, broadcast = True)
-        QTD_ENV_ELEICAO += 1
+        enviar_mensagem(MSG_ELEICAO, broadcast = True, id_thread = id_thread)
         time.sleep(16)
         if(MINHA_ELEICAO):
-            print("Eu venci a eleição! ")
-            enviar_mensagem(MSG_COORDENADOR, broadcast = True)
-            QTD_ENV_COORDENADOR +=1
+            m = "Eu venci a eleição! "
+            enviar_mensagem(MSG_COORDENADOR, broadcast = True, id_thread = id_thread)
         else:
-            print("Eu perdi a eleição <°(((><")
-    else:
-        print("Outra eleição com maior ID em andamento")
+            m = "Eu perdi a eleição <°(((><"
+        print_s(id_thread = id_thread, string_to_print = m)
+    #else:
+    #    print("Outra eleição com maior ID em andamento")
 
 
 def sair_da_lista():
@@ -308,28 +289,31 @@ def sair_da_lista():
             f.write(str(node))
     f.close()
 
-def imprimir_relatorio():
+def print_s(id_thread, string_to_print):
+    global PRINT_SEMAPHORE
+    global LAST_THREAD_TO_PRINT
+    PRINT_SEMAPHORE.acquire(True)
 
-    global QTD_ENV_VIVO
-    global QTD_ENV_VIVO_OK
-    global QTD_ENV_ELEICAO
-    global QTD_ENV_COORDENADOR
-    global QTD_ENV_OK
+    if(LAST_THREAD_TO_PRINT != id_thread):
+        print("#########################################################\n")
 
-    global QTD_REC_VIVO
-    global QTD_REC_VIVO_OK
-    global QTD_REC_ELEICAO
-    global QTD_REC_COORDENADOR
-    global QTD_REC_OK
+        if(id_thread) == 1:
+            print("Thread que escuta mensagens:  \n")
+        elif(id_thread) == 2:
+            print("Thread interface:  \n")
+        else: 
+            print("Thread que verifica o rei: \n")
 
-    RELATORIO = f"\nEnviadas:\nELEIÇÂO:{QTD_ENV_ELEICAO}\nREI:{QTD_ENV_COORDENADOR}\nVIVO:{QTD_ENV_VIVO}\nVIVO_OK:{QTD_ENV_VIVO_OK}\nOK:{QTD_ENV_OK}\n\nRecebidas:\nELEIÇÂO:{QTD_REC_ELEICAO}\nREI:{QTD_REC_COORDENADOR}\nVIVO:{QTD_REC_VIVO}\nVIVO_OK:{QTD_REC_VIVO_OK}\nOK:{QTD_REC_OK}\n"
+    print(string_to_print)
 
-    print(RELATORIO)
-#É a função executada pela thread da doença do rei. Assim que o processo vira rei ele falha.
-def doença_do_rei():
-    print("Ó não, fui afligido por uma doença perniciosa!")
-    IAM_KING.wait()    
-    FINGINDO_MORTO = True
+    print("\n")
+
+    LAST_THREAD_TO_PRINT = id_thread
+
+    #print("O que devo fazer agora? \n")
+
+    PRINT_SEMAPHORE.release()
+
 
 
 # CHAMANDO THREADS
@@ -338,16 +322,14 @@ if __name__ == "__main__":
     #Cria as threads
 
     # Thread responsável por receber mensagens e tomar ações.
-    thread_escuta_mensangens = threading.Thread(target=thread_escuta_mensangens)
+    thread_escuta_mensangens = threading.Thread(target=thread_escuta_mensangens, args=())
 
     # Thread responsável por gerenciar interface com usuário
-    thread_interface = threading.Thread(target=thread_interface)
+    thread_interface = threading.Thread(target=thread_interface, args=())
 
     # Thread responsável em detectar a presença do líder
-    thread_que_verifica_king = threading.Thread(target=thread_que_verifica_king, daemon = True)
+    thread_que_verifica_king = threading.Thread(target=thread_que_verifica_king, args=())
 
-    #Thread que espera o processo se tornar rei e falha esse processo.
-    thread_da_doença_do_rei = threading.Thread(target= doença_do_rei, daemon = True)
 
     #Inicia as threads
     thread_interface.start()
@@ -356,5 +338,6 @@ if __name__ == "__main__":
     
     #Faz com que main espere as threads finalizarem antes de fechar.
     thread_interface.join()    
+    thread_que_verifica_king.join()
 
     message = input("Saindo.. Pressione enter para continuar... ")
