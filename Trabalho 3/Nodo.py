@@ -52,6 +52,7 @@ IAM_KING.set()
 MINHA_ELEICAO = False
 OUTRA_ELEICAO_COM_MAIOR_ID = False
 JA_TENTEI_ME_ELEGER = False
+ELEICAO_SEMAPHORE = threading.BoundedSemaphore(1)
 
 #Definição das mensagens que serão recebidas pela thread que escuta mensagens.
 MSG_VIVO    = "VIVO"
@@ -246,7 +247,7 @@ def thread_interface():
             FINGINDO_MORTO = False
 
         if (message == "dados"):
-            imprimir_relatorio()
+            imprimir_relatorio(id_thread = 2)
 
         if (message == "doença"):
             enviar_mensagem(message, broadcast = True, id_thread =2)
@@ -265,7 +266,7 @@ def get_king():
 
     print_s(id_thread =2, string_to_print = m)
 
-def enviar_mensagem(message, node_port=-1, broadcast = False, id_thread = -1): 
+def enviar_mensagem(message, node_port=-1, broadcast = False, id_thread = -1, print_message = True): 
 
     try:
 
@@ -279,33 +280,42 @@ def enviar_mensagem(message, node_port=-1, broadcast = False, id_thread = -1):
             f.close()
 
             m = "Mensagem enviada: " + str(message) + " para todos os nós"
-            print_s(id_thread = id_thread, string_to_print = m)
+            if(print_message):
+                print_s(id_thread = id_thread, string_to_print = m)
 
         else:
             s.sendto(message.encode("utf-8"), ("127.0.0.1", int(node_port)))
             m = "Mensagem enviada: " + str(message) + " para "+ str(node_port) 
-            print_s(id_thread = id_thread, string_to_print = m)
+            if(print_message):
+                print_s(id_thread = id_thread, string_to_print = m)
     except:
         if(broadcast):
             m = "Ocorreu um erro ao enviar " + message+" em broadcast"
         else:
             m = "Ocorreu um erro ao enviar " + message+" para o nó "+str(node_port)
 
-        print_s(id_thread = id_thread, string_to_print = m)
+        if(print_message):    
+            print_s(id_thread = id_thread, string_to_print = m)
 
 
 
 #Funções que serão chamadas pela thread que verifica o rei.
 def iniciar_eleicao(id_thread):
+
+    global ELEICAO_SEMAPHORE
     global MINHA_ELEICAO
     global OUTRA_ELEICAO_COM_MAIOR_ID
     global KING_SEMAPHORE
     global JA_TENTEI_ME_ELEGER
 
+    ELEICAO_SEMAPHORE.acquire(True)
+
     if(not(JA_TENTEI_ME_ELEGER) and not(OUTRA_ELEICAO_COM_MAIOR_ID)):
         JA_TENTEI_ME_ELEGER = True
-        print_s(id_thread = id_thread, string_to_print = "Iniciando eleição! ")
         MINHA_ELEICAO = True
+        ELEICAO_SEMAPHORE.release()
+
+        print_s(id_thread = id_thread, string_to_print = "Iniciando eleição! ")
         enviar_mensagem(MSG_ELEICAO, broadcast = True, id_thread = id_thread)
         time.sleep(16)
         if(MINHA_ELEICAO):
@@ -316,8 +326,9 @@ def iniciar_eleicao(id_thread):
         else:
             m = "Eu perdi a eleição <°(((><"
         print_s(id_thread = id_thread, string_to_print = m)
-    #else:
-    #    print("Outra eleição com maior ID em andamento")
+    else:    
+        ELEICAO_SEMAPHORE.release()
+    
 
 
 def sair_da_lista():
